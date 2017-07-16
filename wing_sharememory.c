@@ -86,35 +86,72 @@ static void php_wing_sharememory_init_globals(zend_wing_sharememory_globals *win
 /* }}} */
 
 ZEND_METHOD(wing_sharememory, __construct) {
-	//打开共享的文件对象。 
-	HANDLE m_hMapFile = OpenFileMapping(FILE_MAP_ALL_ACCESS, FALSE, ("TestFileMap"));
-	if (m_hMapFile)
-	{
-		//显示共享的文件数据。 
-		LPTSTR lpMapAddr = (LPTSTR)MapViewOfFile(m_hMapFile, FILE_MAP_ALL_ACCESS, 0, 0, 0);
-		OutputDebugString(lpMapAddr);
+	
+	HANDLE filehandle = OpenFileMapping(FILE_MAP_ALL_ACCESS, 0, "Local\\sharedmemory\\wing");
+	if (!filehandle) {
+		filehandle = CreateFileMapping(INVALID_HANDLE_VALUE, NULL, PAGE_READWRITE, 0, 1024,
+			"Local\\sharedmemory\\wing");
 	}
-	else
-	{
-		//创建共享文件。 
-		m_hMapFile = CreateFileMapping((HANDLE)0xFFFFFFFF, NULL,
-			PAGE_READWRITE, 0, 1024, ("TestFileMap"));
-		//拷贝数据到共享文件里。 
-		LPTSTR lpMapAddr = (LPTSTR)MapViewOfFile(m_hMapFile, FILE_MAP_ALL_ACCESS, 0, 0, 0);
-		//std::wstring strTest(_T("TestFileMap"));
-		//wcscpy(lpMapAddr, "TestFileMap");
+	zend_update_property_long(wing_sharememory_ce, getThis(), "process_id", strlen("process_id"), (unsigned long)(filehandle) TSRMLS_CC);
+	//char *memory = (char*)MapViewOfFile(filehandle, FILE_MAP_ALL_ACCESS, 0, 0, 0);
+	//sprintf_s(memory, 1024, "%s", "Data from first process");
 
-		//FlushViewOfFile(lpMapAddr, strTest.length() + 1);
+	//UnmapViewOfFile(memory);
+
+	/*	filehandle = OpenFileMapping(FILE_MAP_ALL_ACCESS, 0, ID);
+		memory = (char*)MapViewOfFile(filehandle, FILE_MAP_ALL_ACCESS, 0, 0, 0);
+		cout << "Second process: " << memory;
+		UnmapViewOfFile(memory);
+		CloseHandle(filehandle);*/
+
+}
+
+ZEND_METHOD(wing_sharememory, set) {
+	char *key     = NULL;
+	char *value   = NULL;
+	int key_len   = 0;
+	int value_len = 0;
+
+	if (SUCCESS != zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "ss", &key, &key_len, &value, &value_len)) {
+		RETURN_FALSE;
 	}
+	HANDLE filehandle = (HANDLE)zend_read_property(wing_sharememory_ce, getThis(), "handler", strlen("handler"), 0, 0 TSRMLS_CC);
+	char *memory = (char*)MapViewOfFile(filehandle, FILE_MAP_ALL_ACCESS, 0, 0, 0);
+	sprintf_s(memory, 1024, "%s=>%s", key, value);
+
+	UnmapViewOfFile(memory);
+
+	zend_printf("%s==>%ld", memory, filehandle);
+
+	RETURN_TRUE;
+}
+
+ZEND_METHOD(wing_sharememory, get) {
+	char *key = NULL;
+	int key_len = 0;
+
+	if (SUCCESS != zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "s", &key, &key_len)) {
+		RETURN_FALSE;
+	}
+	HANDLE filehandle = (HANDLE)zend_read_property(wing_sharememory_ce, getThis(), "handler", strlen("handler"), 0, 0 TSRMLS_CC);
+	char *memory = (char*)MapViewOfFile(filehandle, FILE_MAP_ALL_ACCESS, 0, 0, 0);
+
+	zend_printf("%s==>%ld", memory, filehandle);
+	//RETURN_STRING(memory);
+	//ZVAL_STRING(return_value, memory);
+	UnmapViewOfFile(memory);
 }
 
 ZEND_METHOD(wing_sharememory, __destruct) {
-
+	HANDLE filehandle = (HANDLE)zend_read_property(wing_sharememory_ce, getThis(), "handler", strlen("handler"), 0, 0 TSRMLS_CC);
+	CloseHandle(filehandle);
 }
 
 static zend_function_entry wing_sharememory_methods[] = {
 	ZEND_ME(wing_sharememory, __construct,NULL,ZEND_ACC_PUBLIC | ZEND_ACC_CTOR)
 	ZEND_ME(wing_sharememory, __destruct, NULL,ZEND_ACC_PUBLIC | ZEND_ACC_DTOR)
+	ZEND_ME(wing_sharememory, set, NULL,ZEND_ACC_PUBLIC | ZEND_ACC_DTOR)
+	ZEND_ME(wing_sharememory, get, NULL,ZEND_ACC_PUBLIC | ZEND_ACC_DTOR)
 {
 	NULL,NULL,NULL
 }
@@ -137,7 +174,7 @@ PHP_MINIT_FUNCTION(wing_sharememory)
 	//zend_declare_property_string(wing_process_ce, "file", strlen("file"), "", ZEND_ACC_PRIVATE TSRMLS_CC);
 	////zend_declare_property_string(wing_process_ce, "output_file", strlen("output_file"), "", ZEND_ACC_PRIVATE TSRMLS_CC);
 	//zend_declare_property_long(wing_process_ce, "process_info_pointer", strlen("process_info_pointer"), 0, ZEND_ACC_PRIVATE TSRMLS_CC);
-	//zend_declare_property_long(wing_process_ce, "redirect_handler", strlen("redirect_handler"), 0, ZEND_ACC_PRIVATE TSRMLS_CC);
+	zend_declare_property_long(wing_sharememory_ce, "handler", strlen("handler"), 0, ZEND_ACC_PRIVATE TSRMLS_CC);
 	//zend_declare_property_string(wing_process_ce, "command_line", strlen("command_line"), "", ZEND_ACC_PRIVATE TSRMLS_CC);
 	//zend_declare_property_long(wing_process_ce, "process_id", strlen("process_id"), 0, ZEND_ACC_PRIVATE TSRMLS_CC);
 	//zend_declare_property_long(wing_process_ce, "thread_id", strlen("thread_id"), 0, ZEND_ACC_PRIVATE TSRMLS_CC);
