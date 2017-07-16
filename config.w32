@@ -1,0 +1,13 @@
+// $Id$
+// vim:ft=javascript
+
+// If your extension references something external, use ARG_WITH
+// ARG_WITH("wing_sharememory", "for wing_sharememory support", "no");
+
+// Otherwise, use ARG_ENABLE
+// ARG_ENABLE("wing_sharememory", "enable wing_sharememory support", "no");
+
+if (PHP_WING_SHAREMEMORY != "no") {
+	EXTENSION("wing_sharememory", "wing_sharememory.c", PHP_EXTNAME_SHARED, "/DZEND_ENABLE_STATIC_TSRMLS_CACHE=1");
+}
+
