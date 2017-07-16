@@ -7,3 +7,5 @@
  */
 $cache = new \wing\wing_sharememory();
 var_dump($cache->set("say", "hello"));
+
+sleep(60);

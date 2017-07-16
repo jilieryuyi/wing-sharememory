@@ -86,7 +86,7 @@ static void php_wing_sharememory_init_globals(zend_wing_sharememory_globals *win
 /* }}} */
 ZEND_METHOD(wing_sharememory, __construct) {
 	
-	HANDLE filehandle  = OpenFileMapping(FILE_MAP_ALL_ACCESS, 0, "hello");
+	HANDLE filehandle  = OpenFileMapping(FILE_MAP_READ | FILE_MAP_WRITE, 0, "hello");
 	if (!filehandle) {
 		zend_printf("create\r\n");
 		filehandle = CreateFileMappingA((HANDLE)0xFFFFFFFF, NULL, PAGE_READWRITE, 0, 1024,
