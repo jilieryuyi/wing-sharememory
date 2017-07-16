@@ -84,19 +84,32 @@ static void php_wing_sharememory_init_globals(zend_wing_sharememory_globals *win
 }
 */
 /* }}} */
-
 ZEND_METHOD(wing_sharememory, __construct) {
 	
-	HANDLE filehandle = OpenFileMapping(FILE_MAP_ALL_ACCESS, 0, "Local\\sharedmemory\\wing");
+	HANDLE filehandle  = OpenFileMapping(FILE_MAP_ALL_ACCESS, 0, "hello");
 	if (!filehandle) {
-		filehandle = CreateFileMapping(INVALID_HANDLE_VALUE, NULL, PAGE_READWRITE, 0, 1024,
-			"Local\\sharedmemory\\wing");
+		zend_printf("create\r\n");
+		filehandle = CreateFileMappingA((HANDLE)0xFFFFFFFF, NULL, PAGE_READWRITE, 0, 1024,
+			"hello");
 	}
-	zend_update_property_long(wing_sharememory_ce, getThis(), "process_id", strlen("process_id"), (unsigned long)(filehandle) TSRMLS_CC);
+	else {
+		zend_printf("open\r\n");
+	}
+	zend_update_property_long(wing_sharememory_ce, getThis(), "handler", strlen("handler"), (unsigned long)(filehandle) TSRMLS_CC);
+	
+	////char *memory = (char*)MapViewOfFile(filehandle, FILE_MAP_ALL_ACCESS, 0, 0, 0);
+	////zend_printf("=====%ld=====%ld\r\n", memory, filehandle);
 	//char *memory = (char*)MapViewOfFile(filehandle, FILE_MAP_ALL_ACCESS, 0, 0, 0);
 	//sprintf_s(memory, 1024, "%s", "Data from first process");
 
 	//UnmapViewOfFile(memory);
+
+
+	//HANDLE filehandle = NULL;
+	//zval *handle = zend_read_property(wing_sharememory_ce, getThis(), "handler", strlen("handler"), 0, 0 TSRMLS_CC);
+	//filehandle = (HANDLE)Z_LVAL_P(handle);
+	//char *memory = (char*)MapViewOfFile(filehandle, FILE_MAP_ALL_ACCESS, 0, 0, 0);
+	zend_printf("==========%d\r\n", (filehandle));
 
 	/*	filehandle = OpenFileMapping(FILE_MAP_ALL_ACCESS, 0, ID);
 		memory = (char*)MapViewOfFile(filehandle, FILE_MAP_ALL_ACCESS, 0, 0, 0);
@@ -115,14 +128,21 @@ ZEND_METHOD(wing_sharememory, set) {
 	if (SUCCESS != zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "ss", &key, &key_len, &value, &value_len)) {
 		RETURN_FALSE;
 	}
-	HANDLE filehandle = (HANDLE)zend_read_property(wing_sharememory_ce, getThis(), "handler", strlen("handler"), 0, 0 TSRMLS_CC);
+	HANDLE filehandle = NULL;
+	zval *handle =	zend_read_property(wing_sharememory_ce, getThis(), "handler", strlen("handler"), 0, 0 TSRMLS_CC);
+	filehandle = (HANDLE)Z_LVAL_P(handle);
 	char *memory = (char*)MapViewOfFile(filehandle, FILE_MAP_ALL_ACCESS, 0, 0, 0);
-	sprintf_s(memory, 1024, "%s=>%s", key, value);
+	zend_printf("=====%d=====%d\r\n", memory, Z_LVAL_P(handle));
+	//sprintf(memory, 1024, "%s=>%s", key, value);
 
-	UnmapViewOfFile(memory);
+	//UnmapViewOfFile(memory);
 
-	zend_printf("%s==>%ld", memory, filehandle);
+	//zend_printf("%s==>%ld", memory, filehandle);
 
+	strcpy(memory,"hello");
+	//memcpy(memory, key, strlen(key));
+	
+	               FlushViewOfFile(memory, strlen(memory));
 	RETURN_TRUE;
 }
 
@@ -133,18 +153,20 @@ ZEND_METHOD(wing_sharememory, get) {
 	if (SUCCESS != zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "s", &key, &key_len)) {
 		RETURN_FALSE;
 	}
-	HANDLE filehandle = (HANDLE)zend_read_property(wing_sharememory_ce, getThis(), "handler", strlen("handler"), 0, 0 TSRMLS_CC);
-	char *memory = (char*)MapViewOfFile(filehandle, FILE_MAP_ALL_ACCESS, 0, 0, 0);
+	zval *p = zend_read_property(wing_sharememory_ce, getThis(), "handler", strlen("handler"), 0, 0 TSRMLS_CC);
+	
+	HANDLE  filehandle = (HANDLE)Z_LVAL_P(p);
+	char *memory = (char*)MapViewOfFile(filehandle, FILE_MAP_READ | FILE_MAP_WRITE, 0, 0, 0);
 
-	zend_printf("%s==>%ld", memory, filehandle);
+	zend_printf("%s==>%d", memory, filehandle);
 	//RETURN_STRING(memory);
 	//ZVAL_STRING(return_value, memory);
 	UnmapViewOfFile(memory);
 }
 
 ZEND_METHOD(wing_sharememory, __destruct) {
-	HANDLE filehandle = (HANDLE)zend_read_property(wing_sharememory_ce, getThis(), "handler", strlen("handler"), 0, 0 TSRMLS_CC);
-	CloseHandle(filehandle);
+	zval *p= zend_read_property(wing_sharememory_ce, getThis(), "handler", strlen("handler"), 0, 0 TSRMLS_CC);
+	CloseHandle((HANDLE)Z_LVAL_P(p));
 }
 
 static zend_function_entry wing_sharememory_methods[] = {
